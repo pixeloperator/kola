@@ -67,6 +67,7 @@ const baseCollageClasses =
   "grid overflow-hidden bg-white p-2 shadow-[0_14px_44px_rgba(15,23,42,.14)]";
 const alignXPercent = { left: 0, center: 50, right: 100 };
 const alignYPercent = { top: 0, center: 50, bottom: 100 };
+const imageExtensionPattern = /\.(avif|gif|jpe?g|png|webp|heic|heif)$/i;
 
 function uploadIcon() {
   return `
@@ -115,7 +116,7 @@ function updateValues() {
 }
 
 function getPhotoRatio(template = getTemplate()) {
-  const slotRatios = template.slots
+  const filledSlots = template.slots
     .map((slot, index) => {
       const photo = photos[index];
       if (!photo?.width || !photo?.height) return null;
@@ -123,14 +124,20 @@ function getPhotoRatio(template = getTemplate()) {
       const photoRatio = photo.width / photo.height;
       const colSpan = slot.colSpan || 1;
       const rowSpan = slot.rowSpan || 1;
-      return photoRatio * (rowSpan * template.cols) / (colSpan * template.rows);
+      const slotArea = colSpan * rowSpan;
+
+      return {
+        ratio: photoRatio * (rowSpan * template.cols) / (colSpan * template.rows),
+        area: slotArea,
+      };
     })
     .filter(Boolean);
 
-  if (!slotRatios.length) return template.cols / template.rows;
+  if (!filledSlots.length) return template.cols / template.rows;
 
-  const totalRatio = slotRatios.reduce((sum, ratio) => sum + ratio, 0);
-  return Math.min(4, Math.max(0.25, totalRatio / slotRatios.length));
+  const totalArea = filledSlots.reduce((sum, item) => sum + item.area, 0);
+  const weightedRatio = filledSlots.reduce((sum, item) => sum + item.ratio * item.area, 0) / totalArea;
+  return Math.min(4, Math.max(0.25, weightedRatio));
 }
 
 function getActiveRatio(template = getTemplate()) {
@@ -149,8 +156,8 @@ function updateCollageFrameSize() {
   const verticalPadding = Number.parseFloat(frameStyle.paddingTop) + Number.parseFloat(frameStyle.paddingBottom);
   const availableWidth = Math.max(120, frame.clientWidth - horizontalPadding);
   const availableHeight = Math.max(120, frame.clientHeight - verticalPadding);
-  const maxWidth = Math.min(820, availableWidth);
-  const maxHeight = Math.min(820, availableHeight);
+  const maxWidth = Math.min(980, availableWidth);
+  const maxHeight = Math.min(860, availableHeight);
   const ratio = getActiveRatio();
   const frameRatio = maxWidth / maxHeight;
   let width = maxWidth;
@@ -286,7 +293,7 @@ function isHeicFile(file) {
 }
 
 function isSupportedImageFile(file) {
-  return file.type.startsWith("image/") || isHeicFile(file);
+  return file.type.startsWith("image/") || imageExtensionPattern.test(file.name);
 }
 
 function imageDimensions(url) {
@@ -367,7 +374,12 @@ function revokePhoto(photo) {
 async function normalizePhotoFile(file) {
   if (!isHeicFile(file)) {
     const originalUrl = URL.createObjectURL(file);
-    return { name: file.name, originalUrl, previewUrl: originalUrl };
+    const dimensions = await imageDimensions(originalUrl).catch((error) => {
+      URL.revokeObjectURL(originalUrl);
+      throw error;
+    });
+
+    return { name: file.name, originalUrl, previewUrl: originalUrl, ...dimensions };
   }
 
   if (!window.heic2any) {
@@ -382,8 +394,12 @@ async function normalizePhotoFile(file) {
   const blob = Array.isArray(converted) ? converted[0] : converted;
   const originalUrl = URL.createObjectURL(blob);
   const name = file.name.replace(/\.(heic|heif)$/i, ".jpg");
+  const dimensions = await imageDimensions(originalUrl).catch((error) => {
+    URL.revokeObjectURL(originalUrl);
+    throw error;
+  });
 
-  return { name, originalName: file.name, originalUrl, previewUrl: originalUrl };
+  return { name, originalName: file.name, originalUrl, previewUrl: originalUrl, ...dimensions };
 }
 
 async function setPhotosFromSlot(startSlotIndex, files) {
