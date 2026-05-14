@@ -25,9 +25,9 @@ Potom otevřete `http://localhost:4173`.
 
 Fotografie se zpracovávají lokálně v prohlížeči. Aplikace je neodesílá na server.
 
-Stylování i HEIC převod jsou součástí repozitáře v `assets/`. Aplikace při běhu nepotřebuje externí CDN. Licence vendornuté knihovny je v `assets/vendor/heic2any-LICENSE.md`.
+Stylování i HEIC převod jsou součástí repozitáře v `assets/`. Aplikace při běhu nepotřebuje externí CDN. Licence vendornutých knihoven jsou v `assets/vendor/heic2any-LICENSE.md` a `assets/vendor/heic-to-LICENSE.md`.
 
-HEIC převodník používá interní web worker a dynamické funkce, proto `Content-Security-Policy` povoluje `blob:` workery a `'unsafe-eval'` pro lokální skripty. Bez této výjimky HEIC soubory v prohlížeči nefungují.
+HEIC převodník používá interní web worker a dynamické/WebAssembly funkce, proto `Content-Security-Policy` povoluje `blob:` workery, `'unsafe-eval'` a `'wasm-unsafe-eval'` pro lokální skripty. Bez této výjimky HEIC soubory v prohlížeči nefungují.
 
 Po změně Tailwind tříd znovu vygenerujte CSS:
 
