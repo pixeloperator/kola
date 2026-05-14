@@ -9,6 +9,7 @@
     "tailwindcss": "3.4.17"
   },
   "dependencies": {
+    "heic-to": "^1.4.2",
     "heic2any": "0.0.4"
   }
 }
